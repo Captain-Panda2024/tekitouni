@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quantum Lion-Human Simulation</title>
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .simulation-area {
+            display: flex;
+            gap: 20px;
+        }
+        .field {
+            width: 800px;
+            height: 600px;
+            background: #2a2a2a;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .memory-panel {
+            width: 250px;
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .entity {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+        .human {
+            width: 6px;
+            height: 6px;
+            background: #00ffff;
+        }
+        .selected {
+            width: 8px;
+            height: 8px;
+            border: 2px solid red;
+        }
+        .lion {
+            width: 12px;
+            height: 12px;
+            background: #ff0;
+        }
+        .memory-byte {
+            display: inline-block;
+            width: 40px;
+            padding: 4px;
+            margin: 2px;
+            text-align: center;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <button id="startStop">Start</button>
+            <button id="reset">Reset</button>
+        </div>
+        <div class="simulation-area">
+            <div class="field" id="field"></div>
+            <div class="memory-panel" id="memoryPanel"></div>
+        </div>
+    </div>
+
+<script>
+class Simulation {
+    constructor() {
+        this.isRunning = false;
+        this.people = [];
+        this.lion = null;
+        this.frame = 0;
+        this.selectedPerson = null;
+        this.fieldSize = { width: 800, height: 600 };
+        
+        this.init();
+        this.bindEvents();
+    }
+
+    init() {
+        // 人間の初期化（2バイトメモリ）
+        this.people = Array.from({length: 100}, (_, i) => ({
+            id: i,
+            x: Math.random() * this.fieldSize.width,
+            y: Math.random() * this.fieldSize.height,
+            vx: 0,
+            vy: 0,
+            memory: this.createMemory(2),
+            resonance: 0
+        }));
+
+        // ライオンの初期化（1バイトメモリ）
+        this.lion = {
+            x: this.fieldSize.width/2,
+            y: this.fieldSize.height/2,
+            memory: this.createMemory(1),
+            resonance: 1
+        };
+
+        this.frame = 0;
+        this.selectedPerson = this.people[0];
+        this.render();
+    }
+
+    createMemory(bytes) {
+        return {
+            quantum: new Uint8Array(bytes).map(() => Math.floor(Math.random()*256)),
+            phase: Math.random() * Math.PI * 2
+        };
+    }
+
+    updateMemory(memory, resonance) {
+        // 創発的ゲート操作
+        const newMemory = {
+            quantum: new Uint8Array(memory.quantum),
+            phase: (memory.phase + resonance * 0.1) % (Math.PI * 2)
+        };
+
+        for(let i=0; i<newMemory.quantum.length; i++) {
+            // ランダムなビット反転
+            if(Math.random() < 0.3) newMemory.quantum[i] ^= 1 << Math.floor(Math.random()*8);
+        }
+        return newMemory;
+    }
+
+    torusDistance(x1, y1, x2, y2) {
+        const dx = Math.min(Math.abs(x1 - x2), this.fieldSize.width - Math.abs(x1 - x2));
+        const dy = Math.min(Math.abs(y1 - y2), this.fieldSize.height - Math.abs(y1 - y2));
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+
+    update() {
+        if(!this.isRunning) return;
+
+        this.frame++;
+        const lion = this.lion;
+
+        // 人間の更新
+        this.people.forEach(person => {
+            // トーラス構造の距離計算
+            const dist = this.torusDistance(person.x, person.y, lion.x, lion.y);
+
+            // 共鳴度計算
+            const resonance = Math.exp(-dist/200) * 
+                (0.5 + 0.5*Math.sin(this.frame*0.1 + dist*0.01));
+
+            // メモリ値に基づく行動決定（-1: 接近, 0: 無関心, 1: 逃亡）
+            const memoryValue = person.memory.quantum[0]/255;
+            const behavior = (memoryValue - 0.5) * 2; // -1 to 1
+
+            // 行動に基づく力の計算
+            const force = behavior * resonance * 2;
+
+            // 速度更新
+            const angle = Math.atan2(person.y - lion.y, person.x - lion.x);
+            person.vx += Math.cos(angle) * force;
+            person.vy += Math.sin(angle) * force;
+
+            // ランダムな動き
+            person.vx += (Math.random()-0.5) * 0.5;
+            person.vy += (Math.random()-0.5) * 0.5;
+
+            // 速度の減衰
+            person.vx *= 0.95;
+            person.vy *= 0.95;
+
+            // 位置更新（トーラス構造）
+            person.x = (person.x + person.vx + this.fieldSize.width) % this.fieldSize.width;
+            person.y = (person.y + person.vy + this.fieldSize.height) % this.fieldSize.height;
+
+            // メモリ更新
+            person.memory = this.updateMemory(person.memory, resonance);
+        });
+
+        // ライオンのランダムウォーク（メモリに依存）
+        const lionMemory = lion.memory.quantum[0]/255;
+        this.lion.x += (Math.random()-0.5 + Math.cos(this.frame*0.1)*lionMemory) * 2;
+        this.lion.y += (Math.random()-0.5 + Math.sin(this.frame*0.1)*lionMemory) * 2;
+        this.lion.x = (this.lion.x + this.fieldSize.width) % this.fieldSize.width;
+        this.lion.y = (this.lion.y + this.fieldSize.height) % this.fieldSize.height;
+
+        this.render();
+    }
+
+    render() {
+        const field = document.getElementById('field');
+        field.innerHTML = '';
+
+        // 人間の描画
+        this.people.forEach(person => {
+            const el = document.createElement('div');
+            el.className = `entity human ${person === this.selectedPerson ? 'selected' : ''}`;
+            el.style.left = `${person.x}px`;
+            el.style.top = `${person.y}px`;
+            el.style.backgroundColor = `hsl(180, 100%, ${50 + person.resonance*50}%)`;
+            el.addEventListener('click', () => {
+                this.selectedPerson = person;
+                this.render();
+            });
+            field.appendChild(el);
+        });
+
+        // ライオンの描画
+        const lionEl = document.createElement('div');
+        lionEl.className = 'entity lion';
+        lionEl.style.left = `${this.lion.x}px`;
+        lionEl.style.top = `${this.lion.y}px`;
+        field.appendChild(lionEl);
+
+        // メモリ表示
+        const memoryPanel = document.getElementById('memoryPanel');
+        if(this.selectedPerson) {
+            const behavior = ((this.selectedPerson.memory.quantum[0]/255 - 0.5) * 2).toFixed(2);
+            memoryPanel.innerHTML = `
+                <h3>Selected Human (ID: ${this.selectedPerson.id})</h3>
+                <div>Behavior: ${behavior} (${behavior < 0 ? 'Approaching' : 'Fleeing'})</div>
+                <div>Memory:</div>
+                ${Array.from(this.selectedPerson.memory.quantum).map((byte, i) => `
+                    <div class="memory-byte" style="background:hsl(${byte},70%,50%)">
+                        ${byte.toString(16).padStart(2,'0')}
+                    </div>
+                `).join('')}
+                <div>Phase: ${(this.selectedPerson.memory.phase/Math.PI).toFixed(2)}π</div>
+            `;
+        }
+    }
+
+    bindEvents() {
+        document.getElementById('startStop').addEventListener('click', () => {
+            this.isRunning = !this.isRunning;
+            document.getElementById('startStop').textContent = 
+                this.isRunning ? 'Stop' : 'Start';
+            if(this.isRunning) this.run();
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            this.init();
+            this.render();
+        });
+    }
+
+    run() {
+        if(this.isRunning) {
+            this.update();
+            requestAnimationFrame(() => this.run());
+        }
+    }
+}
+
+// シミュレーション開始
+new Simulation();
+</script>
+</body>
+</html>
